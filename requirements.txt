@@ -1,6 +1,9 @@
-flet==0.22.1
+flet==0.24.1
+flet-runtime==0.24.1
 packaging
 certifi
 typing_extensions
 requests
 urllib3
+charset-normalizer
+idna
