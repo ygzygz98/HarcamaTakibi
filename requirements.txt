@@ -1,9 +1,6 @@
-flet
+flet==0.25.2
+packaging
+certifi
+typing_extensions
 requests
 urllib3
-certifi
-packaging
-typing_extensions
-charset-normalizer
-idna
-aiohttp
