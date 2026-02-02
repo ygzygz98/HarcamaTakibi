@@ -22,8 +22,9 @@ jobs:
       - name: Flet Kutuphanesini Yukle
         run: pip install flet
 
-      - name: APK İnsa Et (Build)
-        run: flet build apk --verbose
+      - name: APK İnsa Et (Otomatik Evet Modu)
+        # BURASI DEGISTI: 'yes' komutu robota surekli evet dedirtir
+        run: yes | flet build apk --verbose
 
       - name: APK Dosyasini Paketle ve Sun
         uses: actions/upload-artifact@v4
