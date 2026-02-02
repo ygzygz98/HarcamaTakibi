@@ -14,10 +14,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Flutter Ortami Kurulumu (Calisan Surum)
+      - name: Flutter Ortami Kurulumu (Efsane Surum)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.5'
+          flutter-version: '3.19.2'
 
       - name: Flet Kutuphanesini Yukle
         run: pip install -r requirements.txt
