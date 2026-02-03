@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Flutter Ortami Kurulumu (Efsane Surum)
+      - name: Flutter Ortami Kurulumu
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.2'
@@ -22,11 +22,12 @@ jobs:
       - name: Flet Kutuphanesini Yukle
         run: pip install -r requirements.txt
 
-      - name: APK İnsa Et (Guvenli Mod)
+      - name: APK İnsa Et (Otomatik Isim)
+        # Repo adi "HarcamaTakibi" oldugu icin uygulama adi da oyle olacak!
         run: yes | flet build apk --verbose
 
       - name: APK Dosyasini Paketle ve Sun
         uses: actions/upload-artifact@v4
         with:
-          name: MekanikButce-APK
+          name: HarcamaTakibi-APK
           path: build/apk/app-release.apk
