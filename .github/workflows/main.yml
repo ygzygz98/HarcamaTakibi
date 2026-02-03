@@ -9,10 +9,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Python Kurulumu
+      - name: Python Kurulumu (3.10 - Daha Stabil)
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Flutter Ortami Kurulumu
         uses: subosito/flutter-action@v2
@@ -20,11 +20,10 @@ jobs:
           flutter-version: '3.19.2'
 
       - name: Flet Kutuphanesini Yukle
-        # requirements.txt icindeki google-generativeai kütüphanesini de yükleyecek
         run: pip install -r requirements.txt
 
-      - name: APK İnsa Et (Otomatik Isim)
-        # Repo adi neyse uygulama adi o olacak
+      - name: APK İnsa Et (Verbose Modu)
+        # --verbose ile nerede takildigini gorelim, yes komutu onaylari gecer
         run: yes | flet build apk --verbose
 
       - name: APK Dosyasini Paketle ve Sun
