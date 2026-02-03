@@ -22,8 +22,9 @@ jobs:
       - name: Flet Kutuphanesini Yukle
         run: pip install -r requirements.txt
 
-      - name: APK İnsa Et (Full Paket)
-        run: yes | flet build apk --verbose --icon logo.png --product "Harcama Takibi"
+      - name: APK İnsa Et (Nokta Atisi)
+        # BURASI DEGISTI: 'python -m flet' diyerek dogru versiyonu zorluyoruz
+        run: yes | python -m flet build apk --verbose --icon logo.png --product "Harcama Takibi"
 
       - name: APK Dosyasini Paketle ve Sun
         uses: actions/upload-artifact@v4
