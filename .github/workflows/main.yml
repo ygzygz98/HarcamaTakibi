@@ -22,7 +22,7 @@ jobs:
       - name: Flet Kutuphanesini Yukle
         run: pip install -r requirements.txt
 
-      - name: APK İnsa Et (Logo ile Birlikte)
+      - name: APK İnsa Et (Logolu ve Ozel)
         run: yes | flet build apk --verbose --icon logo.png
 
       - name: APK Dosyasini Paketle ve Sun
