@@ -20,10 +20,11 @@ jobs:
           flutter-version: '3.19.2'
 
       - name: Flet Kutuphanesini Yukle
+        # requirements.txt icindeki google-generativeai kütüphanesini de yükleyecek
         run: pip install -r requirements.txt
 
       - name: APK İnsa Et (Otomatik Isim)
-        # Repo adi "HarcamaTakibi" oldugu icin uygulama adi da oyle olacak!
+        # Repo adi neyse uygulama adi o olacak
         run: yes | flet build apk --verbose
 
       - name: APK Dosyasini Paketle ve Sun
