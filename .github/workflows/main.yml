@@ -14,17 +14,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Flutter Ortami Kurulumu (Modern Surum)
+      - name: Flutter Ortami Kurulumu (En Yeni Motor)
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.2'
 
-      - name: Flet Kutuphanesini Yukle
-        run: pip install -r requirements.txt
+      - name: Flet Kutuphanesini Yukle (Hafizasiz/Temiz)
+        # --no-cache-dir: Eski sürümleri unut, tazesini indir demek.
+        run: pip install --no-cache-dir -r requirements.txt
 
-      - name: APK İnsa Et (Nokta Atisi)
-        # BURASI DEGISTI: 'python -m flet' diyerek dogru versiyonu zorluyoruz
-        run: yes | python -m flet build apk --verbose --icon logo.png --product "Harcama Takibi"
+      - name: APK İnsa Et (LOGOLU ve ISIMLI FİNAL)
+        # Flet 0.25.2 bu komutları %100 tanır.
+        run: yes | flet build apk --verbose --icon logo.png --product "Harcama Takibi"
 
       - name: APK Dosyasini Paketle ve Sun
         uses: actions/upload-artifact@v4
