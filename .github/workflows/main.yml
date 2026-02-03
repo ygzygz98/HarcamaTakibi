@@ -14,20 +14,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Flutter Ortami Kurulumu
+      - name: Flutter Ortami Kurulumu (Efsane Surum)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.19.2'
 
-      - name: Gereklilikleri Yukle
-        run: pip install packaging
+      - name: Flet Kutuphanesini Yukle
+        run: pip install -r requirements.txt
 
-      - name: Flet 0.25.2 Zorla Kur ve APK Yap (LOGOLU)
-        run: |
-          pip uninstall -y flet
-          pip install flet==0.25.2
-          flet --version
-          yes | flet build apk --verbose --icon logo.png --product "Harcama Takibi"
+      - name: APK İnsa Et (Guvenli Mod)
+        run: yes | flet build apk --verbose
 
       - name: APK Dosyasini Paketle ve Sun
         uses: actions/upload-artifact@v4
