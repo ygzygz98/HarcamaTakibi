@@ -1,11 +1,11 @@
 import flet as ft
-import google.generativeai as genai
+import requests
 import json
+import base64
 from datetime import datetime
 
 # --- SABİT AYARLAR ---
 VARSAYILAN_KATEGORILER = ["Market", "Yemek", "Tekel", "Ulaşım", "Fatura", "Giyim", "Eğitim", "Sağlık", "Diğer"]
-GRAFIK_RENKLERI = ["#2196F3", "#F44336", "#4CAF50", "#FF9800", "#9C27B0", "#009688", "#E91E63", "#00BCD4"]
 
 def main(page: ft.Page):
     page.title = "Harcama Takibi"
@@ -13,7 +13,6 @@ def main(page: ft.Page):
     page.padding = 10
     page.scroll = "auto"
     
-    # Dosya secici (FilePicker) tanimlama
     file_picker = ft.FilePicker()
     page.overlay.append(file_picker)
 
@@ -25,50 +24,73 @@ def main(page: ft.Page):
     def veri_kaydet(anahtar, veri):
         page.client_storage.set(anahtar, veri)
 
-    # --- YAPAY ZEKA (GEMINI) ---
-    def gemini_yapilandir():
+    # --- HAFİF YAPAY ZEKA (REST API) ---
+    def ai_analiz_et(metin_girdisi, resim_bytes=None):
         api_key = veri_getir("gemini_api_key", "")
-        if api_key:
-            genai.configure(api_key=api_key)
-            return True
-        return False
-
-    def ai_analiz_et(girdi, resim_data=None):
-        if not gemini_yapilandir():
+        if not api_key:
             page.show_snack_bar(ft.SnackBar(ft.Text("Lütfen Ayarlar'dan API Key girin!"), bgcolor="red"))
             return None
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Google'ın kapı adresi (URL)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         
-        prompt = """
-        Sen bir muhasebe asistanısın. Gönderilen fiş fotoğrafını veya metni analiz et.
-        Şu JSON formatında yanıt ver (Sadece JSON):
+        # İstek Paketi Hazırlama
+        parts = []
+        
+        # 1. Metin Ekle
+        prompt_text = """
+        Sen bir muhasebe asistanısın. Gelen veriyi analiz et.
+        Yanıtı SADECE şu JSON formatında ver, başka hiçbir şey yazma:
         {
-            "urun": "Kısa ürün/mekan adı",
-            "kategori": "Market, Yemek, Tekel, Ulaşım, Fatura, Giyim, Diğer (Bunlardan en uygununu seç)",
+            "urun": "Kısa ürün adı",
+            "kategori": "Market, Yemek, Tekel, Ulaşım, Fatura, Giyim, Diğer (En uygunu)",
             "tutar": 0.0,
-            "tarih": "GG.AA.YYYY" (Eğer metinde/fişte yoksa bugünün tarihi)
+            "tarih": "GG.AA.YYYY" (Yoksa bugün)
         }
         """
+        parts.append({"text": prompt_text})
         
+        if metin_girdisi:
+             parts.append({"text": f"Kullanıcı notu: {metin_girdisi}"})
+
+        # 2. Resim Varsa Ekle (Base64'e çevirip yolluyoruz)
+        if resim_bytes:
+            b64_data = base64.b64encode(resim_bytes).decode('utf-8')
+            parts.append({
+                "inline_data": {
+                    "mime_type": "image/jpeg",
+                    "data": b64_data
+                }
+            })
+
+        payload = {
+            "contents": [{"parts": parts}]
+        }
+
         try:
-            btn_ai_islem.visible = True # Yükleniyor göstergesi
+            btn_ai_islem.visible = True
             page.update()
             
-            response = None
-            if resim_data:
-                # Resimli Analiz
-                img_part = {"mime_type": "image/jpeg", "data": resim_data}
-                response = model.generate_content([prompt, img_part])
-            else:
-                # Metin Analizi
-                response = model.generate_content([prompt, girdi])
+            # Postacı yola çıkıyor (Ağır kütüphane yok, sadece istek var)
+            response = requests.post(url, headers={'Content-Type': 'application/json'}, json=payload)
+            
+            if response.status_code != 200:
+                hata_mesaji = f"Hata: {response.status_code} - {response.text}"
+                print(hata_mesaji)
+                page.show_snack_bar(ft.SnackBar(ft.Text("Google yanıt vermedi, API Key doğru mu?"), bgcolor="red"))
+                return None
 
-            temiz_veri = response.text.replace("```json", "").replace("```", "").strip()
+            # Yanıtı çözümle
+            sonuc_json = response.json()
+            # Google'ın karmaşık yanıtından metni cımbızla çekiyoruz
+            text_yanit = sonuc_json['candidates'][0]['content']['parts'][0]['text']
+            
+            # JSON temizliği (Bazen ```json etiketiyle yolluyor)
+            temiz_veri = text_yanit.replace("```json", "").replace("```", "").strip()
             return json.loads(temiz_veri)
             
         except Exception as e:
-            page.show_snack_bar(ft.SnackBar(ft.Text(f"AI Hatası: {str(e)}"), bgcolor="red"))
+            page.show_snack_bar(ft.SnackBar(ft.Text(f"Bağlantı Hatası: {str(e)}"), bgcolor="red"))
             return None
         finally:
             btn_ai_islem.visible = False
@@ -81,20 +103,16 @@ def main(page: ft.Page):
             with open(dosya.path, "rb") as f:
                 resim_bytes = f.read()
             
-            page.show_snack_bar(ft.SnackBar(ft.Text("Fiş okunuyor, lütfen bekleyin... 🤖"), bgcolor="blue"))
-            sonuc = ai_analiz_et("", resim_data=resim_bytes)
-            
-            if sonuc:
-                verileri_doldur(sonuc)
+            page.show_snack_bar(ft.SnackBar(ft.Text("Fiş okunuyor... 📸"), bgcolor="blue"))
+            sonuc = ai_analiz_et("", resim_bytes)
+            if sonuc: verileri_doldur(sonuc)
 
     def metinle_doldur(e):
         if not urun_adi.value: return
-        # Eğer metin uzunsa veya sayı içeriyorsa AI'ya sor
         if len(urun_adi.value.split()) > 1 or any(char.isdigit() for char in urun_adi.value):
             page.show_snack_bar(ft.SnackBar(ft.Text("Yazı analiz ediliyor... 🤖"), bgcolor="blue"))
             sonuc = ai_analiz_et(urun_adi.value)
-            if sonuc:
-                verileri_doldur(sonuc)
+            if sonuc: verileri_doldur(sonuc)
 
     def verileri_doldur(veri):
         urun_adi.value = veri.get("urun", "")
@@ -104,51 +122,36 @@ def main(page: ft.Page):
         
         gelen_kategori = veri.get("kategori", "Diğer")
         mevcut_kat = veri_getir("kategoriler", VARSAYILAN_KATEGORILER)
-        
-        if gelen_kategori in mevcut_kat:
-            kategori.value = gelen_kategori
-        else:
-            kategori.value = "Diğer"
+        kategori.value = gelen_kategori if gelen_kategori in mevcut_kat else "Diğer"
             
         tarih_kutusu.value = veri.get("tarih", datetime.now().strftime("%d.%m.%Y"))
-        
-        page.show_snack_bar(ft.SnackBar(ft.Text("Bilgiler Otomatik Dolduruldu! ✨"), bgcolor="green"))
+        page.show_snack_bar(ft.SnackBar(ft.Text("Otomatik Dolduruldu! ✨"), bgcolor="green"))
         page.update()
 
-    # --- STANDART FONKSİYONLAR (KAYDET, SİL VS) ---
+    # --- STANDART FONKSİYONLAR ---
     def harcamalari_oku(): return veri_getir("harcamalar", [])
     
     def kaydet_tikla(e):
-        try:
-            tutar = float(txt_toplam_tutar.value)
-        except:
-            page.show_snack_bar(ft.SnackBar(ft.Text("Tutar hatalı!"), bgcolor="red"))
-            return
+        try: tutar = float(txt_toplam_tutar.value)
+        except: return
             
         yeni_veri = {
-            "tarih": tarih_kutusu.value,
-            "kategori": kategori.value,
-            "urun": urun_adi.value,
-            "tutar": tutar
+            "tarih": tarih_kutusu.value, "kategori": kategori.value,
+            "urun": urun_adi.value, "tutar": tutar
         }
-        
         liste = harcamalari_oku()
         liste.append(yeni_veri)
         veri_kaydet("harcamalar", liste)
         
         urun_adi.value = ""
         txt_toplam_tutar.value = "0.00"
-        txt_birim_fiyat.value = ""
         liste_guncelle()
-        page.show_snack_bar(ft.SnackBar(ft.Text("Kaydedildi!"), bgcolor="green"))
 
     def liste_guncelle():
         veriler = harcamalari_oku()
         veriler.sort(key=lambda x: datetime.strptime(x['tarih'], "%d.%m.%Y"), reverse=True)
         liste_kutusu.controls.clear()
-        
-        toplam = sum(x['tutar'] for x in veriler)
-        txt_ozet.value = f"Toplam: {toplam:,.2f} TL"
+        txt_ozet.value = f"Toplam: {sum(x['tutar'] for x in veriler):,.2f} TL"
 
         for v in veriler:
             liste_kutusu.controls.append(
@@ -169,72 +172,39 @@ def main(page: ft.Page):
         page.update()
 
     # --- ARAYÜZ ---
-    txt_api_key = ft.TextField(label="Gemini API Key (AIza...)", password=True, can_reveal_password=True)
+    txt_api_key = ft.TextField(label="Gemini API Key", password=True, can_reveal_password=True)
     bs_ayarlar = ft.BottomSheet(
         ft.Container(
-            ft.Column([
-                ft.Text("Ayarlar", size=20, weight="bold"),
-                ft.Text("Google AI Studio'dan aldığınız API Key'i girin:", size=12, color="grey"),
-                txt_api_key,
-                ft.ElevatedButton("Kaydet", on_click=api_key_kaydet)
-            ], tight=True),
+            ft.Column([ft.Text("Ayarlar", size=20, weight="bold"), txt_api_key, ft.ElevatedButton("Kaydet", on_click=api_key_kaydet)], tight=True),
             padding=20, bgcolor="#1f1f1f"
         )
     )
 
     tarih_kutusu = ft.TextField(label="Tarih", value=datetime.now().strftime("%d.%m.%Y"), expand=True, height=40, text_size=13)
     kategori = ft.Dropdown(options=[ft.dropdown.Option(x) for x in VARSAYILAN_KATEGORILER], value="Diğer", label="Kategori", expand=True, height=40, text_size=13)
+    urun_adi = ft.TextField(label="Ne aldın? (veya Fiş Yükle)", hint_text="Örn: Migros 500", expand=True, on_submit=metinle_doldur, text_size=14)
+    btn_ai_islem = ft.ProgressRing(width=20, height=20, visible=False)
     
-    urun_adi = ft.TextField(
-        label="Ne aldın? (veya Fiş Yükle)", 
-        hint_text="Örn: Migros 500 TL",
-        expand=True, 
-        on_submit=metinle_doldur, # Enter'a basınca AI çalışır
-        text_size=14
-    )
-    
-    # AI Yükleniyor ikonu
-    btn_ai_islem = ft.ProgressRing(width=20, height=20, stroke_width=2, visible=False)
-
     txt_adet = ft.TextField(label="Adet", value="1", width=50, text_size=13)
     txt_birim_fiyat = ft.TextField(label="Birim", width=80, text_size=13)
     txt_toplam_tutar = ft.TextField(label="Toplam", value="0.00", width=100, text_size=13, weight="bold")
-
     file_picker.on_result = fis_yukle
-    
     liste_kutusu = ft.Column()
     txt_ozet = ft.Text("Toplam: 0.00 TL", size=16, weight="bold")
 
-    # Üst Bar
-    header = ft.Row([
-        ft.Text("HarcamaTakibi", size=18, weight="bold", color="blue"),
-        ft.IconButton(icon="settings", on_click=lambda e: page.open(bs_ayarlar))
-    ], alignment="spaceBetween")
-
-    # Giriş Formu
-    form = ft.Column([
-        ft.Row([tarih_kutusu, kategori]),
-        ft.Row([
-            urun_adi, 
-            ft.IconButton(icon="attach_file", icon_color="orange", on_click=lambda _: file_picker.pick_files(allow_multiple=False)),
-            btn_ai_islem
-        ]),
-        ft.Row([txt_adet, txt_birim_fiyat, txt_toplam_tutar], alignment="spaceBetween"),
-        ft.ElevatedButton("KAYDET", width=400, bgcolor="blue", color="white", on_click=kaydet_tikla)
-    ])
-
     page.add(
-        header,
+        ft.Row([ft.Text("HarcamaTakibi", size=18, weight="bold", color="blue"), ft.IconButton(icon="settings", on_click=lambda e: page.open(bs_ayarlar))], alignment="spaceBetween"),
         ft.Divider(),
-        form,
-        ft.Divider(),
-        txt_ozet,
-        liste_kutusu
+        ft.Column([
+            ft.Row([tarih_kutusu, kategori]),
+            ft.Row([urun_adi, ft.IconButton(icon="attach_file", icon_color="orange", on_click=lambda _: file_picker.pick_files(allow_multiple=False)), btn_ai_islem]),
+            ft.Row([txt_adet, txt_birim_fiyat, txt_toplam_tutar], alignment="spaceBetween"),
+            ft.ElevatedButton("KAYDET", width=400, bgcolor="blue", color="white", on_click=kaydet_tikla)
+        ]),
+        ft.Divider(), txt_ozet, liste_kutusu
     )
     
-    # Başlangıçta key var mı kontrol et
-    mevcut_key = veri_getir("gemini_api_key", "")
-    txt_api_key.value = mevcut_key
+    txt_api_key.value = veri_getir("gemini_api_key", "")
     liste_guncelle()
 
 ft.app(target=main)
