@@ -1,4 +1,2 @@
-flet==0.23.2
-flet-runtime==0.23.2
+flet==0.25.2
 packaging
-toml
