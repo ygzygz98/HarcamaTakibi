@@ -10,7 +10,7 @@ GRAFIK_RENKLERI = [
 
 def main(page: ft.Page):
     # --- SAYFA AYARLARI ---
-    page.title = "Mekanik Bütçe V1.1"
+    page.title = "Harcama Takibi"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 10
     page.scroll = "auto"
@@ -369,3 +369,4 @@ def main(page: ft.Page):
     dashboard_guncelle()
 
 ft.app(target=main)
+
